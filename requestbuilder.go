@@ -1,6 +1,3 @@
-// Copyright (c) 2024 0x9ef. All rights reserved.
-// Use of this source code is governed by an MIT license
-// that can be found in the LICENSE file.
 package clientx
 
 import (
@@ -53,12 +50,6 @@ func NewRequestBuilder[Req any, Resp any](api *API) *RequestBuilder[Req, Resp] {
 // WithForm sets the form data for the request.
 func (rb *RequestBuilder[Req, Resp]) WithForm(obj url.Values) *RequestBuilder[Req, Resp] {
 	rb.requestOptions = append(rb.requestOptions, WithRequestForm(obj))
-	return rb
-}
-
-// WithQueryParams sets URL query parameters from structure by accesing field with provided tag alias.
-func (rb *RequestBuilder[Req, Resp]) WithQueryParams(tag string, params ...Req) *RequestBuilder[Req, Resp] {
-	rb.requestOptions = append(rb.requestOptions, WithRequestQueryParams(tag, params...))
 	return rb
 }
 

@@ -2,21 +2,16 @@
 The purpose of this client is to design and develop clients for any API very fast using generics for request, response models encoding/decoding with supported from the box retry, rate-limit, GZIP/Deflate decoding functionality.
 
 ## Installation
-> NOTE: Requires at least Go 1.18 since we use generics
 
 To get latest version use:
 ```
-go get github.com/0x9ef/clientx@latest
+go get github.com/uxrust/clientx@latest
 ```
 
 To specify version use:
 ```
-go get github.com/0x9ef/clientx@1.24.4 # version
+go get github.com/uxrust/clientx@1.24.4 # version
 ```
-
-## Usage examples
-* Check out the ready-to-use [HotelBeds Client](https://github.com/0x9ef/hotelbeds-go) built with ClientX
-* See the [examples/](https://github.com/0x9ef/clientx/blob/master/examples) folder (CatFacts, PHPNoise APIs)
 
 ## Getting Started
 The first thing you need to understand: it will be easy :)
@@ -106,7 +101,8 @@ api := New(
 ```
 
 ### Request options
-You can add custom headers to request or set query parameters, form data, etc... The list of supported request options you can find [here](https://github.com/0x9ef/clientx/blob/master/requestoptions.go).
+You can add custom headers to request or set query parameters, form data, etc...
+The list of supported request options you can find [here](https://github.com/uxrust/clientx/blob/master/requestoptions.go).
 
 ```go
 func (api *MyAPI) GetOffer(ctx context.Context, offerId string, opts ...clientx.RequestOption) (*Offer, error) {
@@ -140,15 +136,6 @@ func (param GetOfferParam) Encode(v url.Values) error {
 	return nil
 }
 
-
-// Variant based on WithQueryParams (when we want to encode through structure tags) 
-func (api *MyAPI) GetOffer(ctx context.Context, offerId string, params GetOfferParams, opts ...clientx.RequestOption) (*Offer, error) {
-	return clientx.NewRequestBuilder[struct{}, Offer](api.API).
-		Get("/offers/"+offerId, opts...).
-		WithQueryParams("url", params).
-		DoWithDecode(ctx)
-}
-
 // Variant based on WithEncodableQueryParams when we implement clientx.ParamEncoder interface
 func (api *MyAPI) GetOffer(ctx context.Context, offerId string, params GetOfferParams, opts ...clientx.RequestOption) (*Offer, error) {
 	return clientx.NewRequestBuilder[struct{}, Offer](api.API).
@@ -159,7 +146,10 @@ func (api *MyAPI) GetOffer(ctx context.Context, offerId string, params GetOfferP
 ```
 
 ### Custom encoding & decoding 
-By default, ClientX uses JSON encoder if not specified. If you want to encode/decode payload and responses in XML or any other formats, you should implement `clientx.EncoderDecoder` and pass it as a second argument into `DoWithDecode` function.
+By default, ClientX uses JSON encoder if not specified. 
+If you want to encode/decode payload and responses in XML or any other formats, 
+you should implement `clientx.EncoderDecoder` 
+and pass it as a second argument into `DoWithDecode` function.
 
 ```go
 func (api *MyAPI) CreateOffer(ctx context.Context, offerId string, body GetOfferParams, opts ...clientx.RequestOption) (*Offer, error) {
@@ -169,11 +159,3 @@ func (api *MyAPI) CreateOffer(ctx context.Context, offerId string, body GetOffer
 		DoWithDecode(ctx, clientx.XMLEncoderDecoder) // selected XML encoder
 }
 ```
-
-**Encoders supported from the box**:
-- JSON
-- XML
-- Blank (No actions, no errors)
-
-## Contributing
-If you found a bug or have an idea for a new feature, please first discuss it with us by [submitting a new issue](https://github.com/0x9ef/clientx/issues). 

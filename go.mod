@@ -1,8 +1,10 @@
-module github.com/0x9ef/clientx
+module github.com/uxrust/clientx
 
-go 1.19
+go 1.21
+
+require golang.org/x/time v0.5.0
 
 require (
-	github.com/gorilla/schema v1.2.1
-	golang.org/x/time v0.5.0
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/sony/gobreaker/v2 v2.0.0 // indirect
 )

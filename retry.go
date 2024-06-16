@@ -1,6 +1,3 @@
-// Copyright (c) 2024 0x9ef. All rights reserved.
-// Use of this source code is governed by an MIT license
-// that can be found in the LICENSE file.
 package clientx
 
 import (
@@ -57,9 +54,9 @@ func (b *backoff) Attempt() int64 {
 
 func ExponentalBackoff(attemptNum int, min, max time.Duration) time.Duration {
 	const factor = 2.0
-	rand.Seed(time.Now().UnixNano())
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	delay := time.Duration(math.Pow(factor, float64(attemptNum)) * float64(min))
-	jitter := time.Duration(rand.Float64() * float64(min) * float64(attemptNum))
+	jitter := time.Duration(rnd.Float64() * float64(min) * float64(attemptNum))
 
 	delay = delay + jitter
 	if delay > max {

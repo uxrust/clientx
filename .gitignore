@@ -1,4 +1,14 @@
-*.png
-*.jpg
-*.jpeg
-*.DS_Store
+# Ignore everything
+*
+
+# But not these files...
+!/.gitignore
+
+!*.go
+!go.sum
+!go.mod
+
+!README.md
+
+# ...even if they are in subdirectories
+!*/

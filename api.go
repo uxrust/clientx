@@ -1,11 +1,8 @@
-// Copyright (c) 2024 0x9ef. All rights reserved.
-// Use of this source code is governed by an MIT license
-// that can be found in the LICENSE file.
-//
 // Package clientx provides functions to build and maintain your own HTTP client.
 package clientx
 
 import (
+	"net"
 	"net/http"
 	"time"
 
@@ -22,6 +19,7 @@ type API struct {
 	options    *Options
 	retry      Retrier
 	limiter    Limiter
+	breaker    *CircuitBreaker
 }
 
 type (
@@ -37,6 +35,7 @@ type (
 		RateLimitParseFn func(*http.Response) (limit int, remaining int, resetAt time.Time, err error)
 		RateLimit        *OptionRateLimit
 		Retry            *OptionRetry
+		CircuitBreaker   *OptionCircuitBreaker
 	}
 
 	OptionRateLimit struct {
@@ -55,13 +54,35 @@ type (
 		// Retry function which will be used as main retry logic.
 		Fn RetryFunc
 	}
+
+	OptionCircuitBreaker struct {
+		Name                     string
+		ConsecutiveFailuresLimit uint32
+		BreakerTimeOutInSeconds  uint32
+	}
 )
 
 // NewAPI returns new base API structure with preselected http.DefaultClient
 // and options. Applies all options, overwrites HttpClient if such option is presented.
 func NewAPI(opts ...Option) *API {
+	var transport = &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout: 2 * time.Second,
+		}).DialContext,
+		TLSHandshakeTimeout: 2 * time.Second,
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 50,
+		IdleConnTimeout:     30 * time.Second,
+		DisableKeepAlives:   false,
+	}
+
+	var httpClient = &http.Client{
+		Timeout:   time.Second * 45,
+		Transport: transport,
+	}
+
 	options := &Options{
-		HttpClient: http.DefaultClient,
+		HttpClient: httpClient,
 	}
 	for _, opt := range opts {
 		opt(options)
@@ -85,6 +106,10 @@ func NewAPI(opts ...Option) *API {
 		api.limiter = newAdaptiveBucketLimiter(limit, options.RateLimit.Burst)
 	} else {
 		api.limiter = newUnlimitedAdaptiveBucketLimiter()
+	}
+
+	if options.CircuitBreaker != nil {
+		api.breaker = newCircuitBreaker(options.CircuitBreaker)
 	}
 
 	return api
@@ -113,7 +138,7 @@ func WithHTTPClient(client *http.Client) Option {
 	}
 }
 
-// WithRetry sets custom retrier implementation. Also enables retrying mechanism.
+// WithRetry sets custom retriever implementation. Also enables retrying mechanism.
 // If f retry function isn't provided ExponentalBackoff algorithm will be used.
 func WithRetry(maxAttempts int, minWaitTime, maxWaitTime time.Duration, f RetryFunc, conditions ...RetryCond) Option {
 	return func(o *Options) {
@@ -158,5 +183,15 @@ func WithHeaderSet(headers map[string][]string) Option {
 			o.Headers = make(http.Header)
 		}
 		o.Headers = headers
+	}
+}
+
+func WithCircuitBreaker(name string, breakerTimeOutInSeconds uint32, consecutiveFailuresLimit uint32) Option {
+	return func(o *Options) {
+		o.CircuitBreaker = &OptionCircuitBreaker{
+			Name:                     name,
+			BreakerTimeOutInSeconds:  breakerTimeOutInSeconds,
+			ConsecutiveFailuresLimit: consecutiveFailuresLimit,
+		}
 	}
 }

@@ -1,6 +1,3 @@
-// Copyright (c) 2024 0x9ef. All rights reserved.
-// Use of this source code is governed by an MIT license
-// that can be found in the LICENSE file.
 package clientx
 
 import (
@@ -23,8 +20,9 @@ type Limiter interface {
 
 // This bucket implementation is wrapper around rate.Limiter.
 //
-// Using adaptive rate-limiting may cause Thundering herd problem, when all clients (in our situation - goroutines)
-// simultaneously wait till ResetAt time and then immediately hit rate limit (because they're bursting requests).
+// Using adaptive rate-limiting may cause Thundering herd problem, when all clients
+// (in our situation - goroutines) simultaneously wait till ResetAt time
+// and then immediately hit rate limit (because they're bursting requests).
 // See: https://en.wikipedia.org/wiki/Thundering_herd_problem
 type adaptiveBucketLimiter struct {
 	r               *rate.Limiter

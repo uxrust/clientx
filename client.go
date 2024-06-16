@@ -1,13 +1,12 @@
-// Copyright (c) 2024 0x9ef. All rights reserved.
-// Use of this source code is governed by an MIT license
-// that can be found in the LICENSE file.
 package clientx
 
 import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"github.com/pkg/errors"
+	"github.com/sony/gobreaker/v2"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -40,6 +39,8 @@ func (c *client[Req, Resp]) do(ctx context.Context, req *RequestBuilder[Req, Res
 	if err != nil {
 		return nil, nil, err
 	}
+	defer r.Close()
+
 	if req.errDecodeFn != nil {
 		ok, err := req.errDecodeFn(resp)
 		if ok {
@@ -56,7 +57,8 @@ func (c *client[Req, Resp]) do(ctx context.Context, req *RequestBuilder[Req, Res
 
 	for _, after := range c.afterResponse {
 		if err := after(resp, &data); err != nil {
-			return nil, nil, fmt.Errorf("after response exec failed: %w", err)
+
+			return nil, nil, errors.Wrap(err, "after response exec failed")
 		}
 	}
 
@@ -100,15 +102,38 @@ func (c *client[Req, Resp]) performRequest(ctx context.Context, httpReq *http.Re
 			// Issue https://github.com/golang/go/issues/36095
 			var b bytes.Buffer
 			b.ReadFrom(req.Body)
-			req.Body = ioutil.NopCloser(&b)
+			req.Body = io.NopCloser(&b)
 
 			cloneReq := req.Clone(ctx)
-			cloneReq.Body = ioutil.NopCloser(bytes.NewReader(b.Bytes()))
+			cloneReq.Body = io.NopCloser(bytes.NewReader(b.Bytes()))
 			req = cloneReq
 		}
 
-		resp, err := c.api.httpClient.Do(req)
+		var resp *http.Response
+		var err error
+
+		if c.api.breaker.Breaker == nil {
+			resp, err = c.api.httpClient.Do(req)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			resp, err = c.api.breaker.Breaker.Execute(func() (*http.Response, error) {
+				resp, err := c.api.httpClient.Do(req)
+				if err != nil {
+					return nil, err
+				}
+
+				return resp, nil
+			})
+		}
+
 		if err != nil {
+			if errors.Is(err, gobreaker.ErrOpenState) || errors.Is(err, gobreaker.ErrTooManyRequests) {
+				// todo add metrics of c-breaker
+				return nil, errors.Wrap(err, fmt.Sprintf("CIRCUIT-BREAKER %s", c.api.breaker.Breaker.Name()))
+			}
+
 			return nil, err
 		}
 
@@ -117,7 +142,7 @@ func (c *client[Req, Resp]) performRequest(ctx context.Context, httpReq *http.Re
 			if err != nil {
 				return nil, err
 			}
-			fmt.Fprintf(os.Stdout, "RESPONSE:\n%s\n", string(b))
+			_, _ = fmt.Fprintf(os.Stdout, "RESPONSE:\n%s\n", string(b))
 		}
 		return resp, nil
 	}

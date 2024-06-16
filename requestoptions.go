@@ -1,6 +1,3 @@
-// Copyright (c) 2024 0x9ef. All rights reserved.
-// Use of this source code is governed by an MIT license
-// that can be found in the LICENSE file.
 package clientx
 
 import (
@@ -9,28 +6,9 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-
-	"github.com/gorilla/schema"
 )
 
 type RequestOption func(req *http.Request) error
-
-// WithRequestQueryParams encodes query params automatically by accesing fields with custom tag.
-func WithRequestQueryParams[T any](tag string, params ...T) RequestOption {
-	return func(req *http.Request) error {
-		q := req.URL.Query()
-		enc := schema.NewEncoder()
-		enc.SetAliasTag(tag)
-
-		for _, param := range params {
-			if err := enc.Encode(param, q); err != nil {
-				return fmt.Errorf("failed to encode query params: %w", err)
-			}
-		}
-		req.URL.RawQuery = q.Encode()
-		return nil
-	}
-}
 
 // WithRequestQueryEncodableParams encodes query params by implementing ParamEncoder[T] interface,
 // calls Encode(url.Values) functional to set query params.
