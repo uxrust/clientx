@@ -112,7 +112,7 @@ func (c *client[Req, Resp]) performRequest(ctx context.Context, httpReq *http.Re
 		var resp *http.Response
 		var err error
 
-		if c.api.breaker.Breaker == nil {
+		if c.api.breaker == nil || c.api.breaker.Breaker == nil {
 			resp, err = c.api.httpClient.Do(req)
 			if err != nil {
 				return nil, err
@@ -131,7 +131,7 @@ func (c *client[Req, Resp]) performRequest(ctx context.Context, httpReq *http.Re
 		if err != nil {
 			if errors.Is(err, gobreaker.ErrOpenState) || errors.Is(err, gobreaker.ErrTooManyRequests) {
 				// todo add metrics of c-breaker
-				return nil, errors.Wrap(err, fmt.Sprintf("CIRCUIT-BREAKER %s", c.api.breaker.Breaker.Name()))
+				return nil, errors.Wrap(err, fmt.Sprintf("circuit-breaker has worked"))
 			}
 
 			return nil, err
